@@ -10,16 +10,11 @@
     not-found-text="ไม่พบข้อมูลโรงเรียน"
   >
     <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-      <AdminDetailField label="รหัสโรงเรียน" :value="school.code" />
       <AdminDetailField label="ชื่อโรงเรียน" :value="school.name" />
-      <AdminDetailField label="อีเมล" :value="school.email" />
-      <AdminDetailField label="เบอร์โทรศัพท์" :value="school.phoneNumber" />
-      <AdminDetailField label="ผู้อำนวยการ" :value="school.director" />
-      <AdminDetailField label="สถานะ">
-        <UIBadge :variant="school.isActive ? 'success' : 'secondary'">
-          {{ school.isActive ? 'ใช้งาน' : 'ไม่ใช้งาน' }}
-        </UIBadge>
-      </AdminDetailField>
+      <AdminDetailField label="โลโก้โรงเรียน (URL)" :value="school.logo_url || '-'" />
+      <AdminDetailField label="สีธีม" :value="school.theme_color || '-'" />
+      <AdminDetailField label="ที่อยู่" :value="school.address || '-'" />
+      <AdminDetailField label="คำอธิบาย" :value="school.description || '-'" />
     </div>
   </AdminDetailPageShell>
 </template>

@@ -146,14 +146,43 @@
       <!-- Logout Modal -->
       <UIModal
         v-model="showLogoutModal"
-        title="ยืนยันการออกจากระบบ"
+        title="ออกจากระบบ"
         size="sm"
-        :show-default-footer="true"
+        :show-default-footer="false"
         @confirm="confirmLogout"
       >
-        <div class="text-center text-secondary-800 py-2">
-          คุณต้องการออกจากระบบหรือไม่?
+        <div class="rounded-xl border border-danger-100 bg-gradient-to-br from-danger-50 to-white p-4">
+          <div class="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-danger-100 text-danger-700">
+            <Icon name="lucide:log-out" class="h-6 w-6" />
+          </div>
+          <h4 class="text-center text-base font-semibold text-secondary-900">ยืนยันการออกจากระบบ</h4>
+          <p class="mt-2 text-center text-sm text-secondary-700">
+            คุณกำลังจะออกจากระบบ และล้างข้อมูลการเข้าสู่ระบบในอุปกรณ์นี้
+          </p>
+          <p class="mt-1 text-center text-xs text-secondary-500">ต้องการดำเนินการต่อหรือไม่?</p>
         </div>
+
+        <template #footer>
+          <div class="grid w-full grid-cols-2 gap-3">
+            <UIButton
+              variant="detail"
+              class="h-11 w-full rounded-xl border-secondary-300 font-semibold"
+              :disabled="isLoggingOut"
+              @click="showLogoutModal = false"
+            >
+              ยกเลิก
+            </UIButton>
+            <UIButton
+              variant="danger"
+              icon="lucide:log-out"
+              class="h-11 w-full rounded-xl font-semibold shadow-sm"
+              :loading="isLoggingOut"
+              @click="confirmLogout"
+            >
+              ออกจากระบบ
+            </UIButton>
+          </div>
+        </template>
       </UIModal>
 
     <!-- Toast Notification -->
@@ -232,23 +261,21 @@ const handleGoProfile = async () => {
 }
 
 const showLogoutModal = ref(false)
+const isLoggingOut = ref(false)
 const handleLogout = () => {
   showProfileMenu.value = false
   showLogoutModal.value = true
 }
 
 const confirmLogout = async () => {
-  // Clear all cookies
-  if (import.meta.client) {
-    const cookies = document.cookie.split(';')
-    for (const cookie of cookies) {
-      const eqPos = cookie.indexOf('=')
-      const name = eqPos > -1 ? cookie.substr(0, eqPos) : cookie
-      document.cookie = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/'
-    }
+  if (isLoggingOut.value) return
+  isLoggingOut.value = true
+  try {
+    await authStore.logout()
+    showLogoutModal.value = false
+  } finally {
+    isLoggingOut.value = false
   }
-  await authStore.logout()
-  showLogoutModal.value = false
 }
 
 // Initialize

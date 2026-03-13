@@ -1,10 +1,13 @@
 export default defineNuxtRouteMiddleware(async (to, from) => {
+  // Auth session is persisted in localStorage, so checks must happen on client.
+  if (import.meta.server) {
+    return
+  }
+
   const authStore = useAuthStore()
 
   // Restore session if exists
-  if (import.meta.client) {
-    await authStore.restoreSession()
-  }
+  await authStore.restoreSession()
 
   // Check if user is authenticated
   if (!authStore.isAuthenticated) {

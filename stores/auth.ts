@@ -49,6 +49,14 @@ interface BackendPermissionsData {
   token_expires: string
 }
 
+interface BackendRefreshData {
+  access_token: string
+  token_type: string
+  expires_at: string
+  role?: string
+  roles?: string[]
+}
+
 interface BackendSchoolData {
   id: string
   code?: string
@@ -72,11 +80,35 @@ export const useAuthStore = defineStore('auth', () => {
   const refreshToken = ref<string | null>(null)
   const isAuthenticated = computed(() => !!user.value && !!accessToken.value)
   const currentRole = ref<UserRole | null>(null)
+  let restoreSessionPromise: Promise<void> | null = null
 
   // Getters
   const userRoles = computed(() => user.value?.roles || [])
   const hasMultipleRoles = computed(() => userRoles.value.length > 1)
   const canSwitchRole = computed(() => hasMultipleRoles.value && user.value?.roles.length !== 1)
+
+  const clearBrowserCookies = () => {
+    if (!import.meta.client) return
+
+    const cookies = document.cookie ? document.cookie.split(';') : []
+    const hostname = window.location.hostname
+    const domainParts = hostname.split('.')
+
+    for (const cookie of cookies) {
+      const rawName = cookie.split('=')[0]
+      const name = rawName.trim()
+      if (!name) continue
+
+      // Best effort cleanup for common cookie scopes.
+      document.cookie = `${name}=; Max-Age=0; path=/`
+      document.cookie = `${name}=; Max-Age=0; path=/; domain=${hostname}`
+
+      for (let i = 0; i < domainParts.length - 1; i++) {
+        const domain = `.${domainParts.slice(i).join('.')}`
+        document.cookie = `${name}=; Max-Age=0; path=/; domain=${domain}`
+      }
+    }
+  }
 
   const normalizeRoles = (roles: string[]) => {
     return (roles || []).filter((role): role is UserRole => roleValues.includes(role as UserRole))
@@ -249,6 +281,7 @@ export const useAuthStore = defineStore('auth', () => {
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
         localStorage.removeItem('currentRole')
+        clearBrowserCookies()
       }
 
       // Redirect to login
@@ -277,7 +310,14 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const restoreSession = async () => {
-    if (import.meta.client) {
+    if (!import.meta.client) return
+
+    if (restoreSessionPromise) {
+      await restoreSessionPromise
+      return
+    }
+
+    restoreSessionPromise = (async () => {
       const storedUser = localStorage.getItem('user')
       const storedAccessToken = localStorage.getItem('accessToken')
       const storedRefreshToken = localStorage.getItem('refreshToken')
@@ -295,27 +335,40 @@ export const useAuthStore = defineStore('auth', () => {
           console.error('Restore session hydrate failed:', error)
         }
       }
+    })()
+
+    try {
+      await restoreSessionPromise
+    } finally {
+      restoreSessionPromise = null
     }
   }
 
   const refreshAccessToken = async () => {
     try {
       const config = useRuntimeConfig()
-      if (!refreshToken.value) {
-        throw new Error('No refresh token available')
+      if (!accessToken.value) {
+        throw new Error('No access token available')
       }
 
-      const response = await $fetch<{ accessToken: string }>(`${config.public.apiBase}/auth/refresh`, {
+      const response = await $fetch<ApiEnvelope<BackendRefreshData>>(`${config.public.apiBase}${API_ENDPOINTS.REFRESH_TOKEN}`, {
         method: 'POST',
-        body: { refreshToken: refreshToken.value }
+        headers: {
+          Authorization: `Bearer ${accessToken.value}`
+        }
       })
 
-      accessToken.value = response.accessToken
-      if (import.meta.client) {
-        localStorage.setItem('accessToken', response.accessToken)
+      const nextAccessToken = response.data?.access_token
+      if (!nextAccessToken) {
+        throw new Error('Invalid refresh response')
       }
 
-      return response.accessToken
+      accessToken.value = nextAccessToken
+      if (import.meta.client) {
+        localStorage.setItem('accessToken', nextAccessToken)
+      }
+
+      return nextAccessToken
     } catch (error) {
       console.error('Token refresh error:', error)
       await logout()

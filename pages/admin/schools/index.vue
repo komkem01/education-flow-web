@@ -17,13 +17,7 @@
         @view="handleView"
         @edit="handleEdit"
         @page-change="handlePageChange"
-      >
-        <template #cell-isActive="{ value }">
-          <UIBadge :variant="value ? 'success' : 'secondary'">
-            {{ value ? 'ใช้งาน' : 'ไม่ใช้งาน' }}
-          </UIBadge>
-        </template>
-      </UITable>
+      />
     </UICard>
 
     <UIModal
@@ -34,44 +28,26 @@
       :loading="saving"
       @confirm="handleSave"
     >
-      <div class="grid grid-cols-2 gap-4">
-        <UIInput
-          v-model="form.code"
-          label="รหัสโรงเรียน"
-          :disabled="true"
-        />
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
         <UIInput
           v-model="form.name"
-          label="ชื่อโรงเรียน (ไทย)"
+          label="ชื่อโรงเรียน"
           placeholder="กรอกชื่อโรงเรียน"
           required
         />
         <UIInput
-          v-model="form.nameEn"
-          label="ชื่อโรงเรียน (อังกฤษ)"
-          placeholder="School Name"
-        />
-        <UIInput
-          v-model="form.phoneNumber"
-          label="เบอร์โทรศัพท์"
-          placeholder="กรอกเบอร์โทรศัพท์"
-          required
-        />
-        <UIInput
-          v-model="form.email"
-          label="อีเมล"
-          type="email"
-          placeholder="กรอกอีเมล"
-          required
-        />
-        <UIInput
-          v-model="form.website"
-          label="เว็บไซต์"
-          placeholder="https://"
+          v-model="form.logo_url"
+          label="โลโก้โรงเรียน (URL)"
+          placeholder="https://example.com/logo.png"
         />
       </div>
 
-      <div class="mt-4">
+      <div class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+        <UIInput
+          v-model="form.theme_color"
+          label="สีธีม"
+          placeholder="#0ea5e9"
+        />
         <UIInput
           v-model="form.address"
           label="ที่อยู่"
@@ -80,39 +56,11 @@
         />
       </div>
 
-      <div class="grid grid-cols-4 gap-4 mt-4">
-        <UIInput
-          v-model="form.subDistrict"
-          label="ตำบล/แขวง"
-          placeholder="ตำบล/แขวง"
-          required
-        />
-        <UIInput
-          v-model="form.district"
-          label="อำเภอ/เขต"
-          placeholder="อำเภอ/เขต"
-          required
-        />
-        <UIInput
-          v-model="form.province"
-          label="จังหวัด"
-          placeholder="จังหวัด"
-          required
-        />
-        <UIInput
-          v-model="form.postalCode"
-          label="รหัสไปรษณีย์"
-          placeholder="00000"
-          required
-        />
-      </div>
-
       <div class="mt-4">
         <UIInput
-          v-model="form.director"
-          label="ผู้อำนวยการ"
-          placeholder="กรอกชื่อผู้อำนวยการ"
-          required
+          v-model="form.description"
+          label="คำอธิบาย"
+          placeholder="คำอธิบายโรงเรียน"
         />
       </div>
     </UIModal>
@@ -121,7 +69,15 @@
 </template>
 
 <script setup lang="ts">
-import type { School } from '~/types'
+
+interface SchoolInfo {
+  id: string
+  name: string
+  logo_url?: string | null
+  theme_color?: string | null
+  address?: string | null
+  description?: string | null
+}
 
 definePageMeta({
   layout: false,
@@ -133,18 +89,16 @@ const { success, error } = useToast()
 const route = useRoute()
 const router = useRouter()
 
-const schools = ref<School[]>([])
+const schools = ref<SchoolInfo[]>([])
 const loading = ref(false)
 const saving = ref(false)
 const showSchoolModal = ref(false)
-const selectedSchool = ref<School | null>(null)
+const selectedSchool = ref<SchoolInfo | null>(null)
 
 const columns = [
-  { key: 'code', label: 'รหัส' },
   { key: 'name', label: 'ชื่อโรงเรียน' },
-  { key: 'phoneNumber', label: 'เบอร์โทร' },
-  { key: 'director', label: 'ผู้อำนวยการ' },
-  { key: 'isActive', label: 'สถานะ' }
+  { key: 'address', label: 'ที่อยู่' },
+  { key: 'description', label: 'คำอธิบาย' }
 ]
 
 const pagination = ref({
@@ -155,18 +109,11 @@ const pagination = ref({
 })
 
 const form = reactive({
-  code: '',
   name: '',
-  nameEn: '',
+  logo_url: '',
+  theme_color: '',
   address: '',
-  subDistrict: '',
-  district: '',
-  province: '',
-  postalCode: '',
-  phoneNumber: '',
-  email: '',
-  website: '',
-  director: ''
+  description: ''
 })
 
 const clearEditQuery = async () => {
@@ -176,19 +123,12 @@ const clearEditQuery = async () => {
   await router.replace({ path: route.path, query })
 }
 
-const populateFormFromSchool = (school: Partial<School>) => {
-  form.code = school.code || ''
+const populateFormFromSchool = (school: Partial<SchoolInfo>) => {
   form.name = school.name || ''
-  form.nameEn = school.nameEn || ''
+  form.logo_url = school.logo_url || ''
+  form.theme_color = school.theme_color || ''
   form.address = school.address || ''
-  form.subDistrict = school.subDistrict || ''
-  form.district = school.district || ''
-  form.province = school.province || ''
-  form.postalCode = school.postalCode || ''
-  form.phoneNumber = school.phoneNumber || ''
-  form.email = school.email || ''
-  form.website = school.website || ''
-  form.director = school.director || ''
+  form.description = school.description || ''
 }
 
 const fetchSchools = async () => {
@@ -200,9 +140,10 @@ const fetchSchools = async () => {
         limit: pagination.value.limit
       }
     })
-    schools.value = response.data
-    pagination.value.total = response.total
-    pagination.value.totalPages = response.totalPages
+    const payload = response.data ?? response
+    schools.value = Array.isArray(payload) ? payload : [payload]
+    pagination.value.total = response.total ?? schools.value.length
+    pagination.value.totalPages = response.totalPages ?? 1
   } catch (err) {
     error('เกิดข้อผิดพลาดในการโหลดข้อมูล')
   } finally {
@@ -210,12 +151,12 @@ const fetchSchools = async () => {
   }
 }
 
-const handleView = (school: School) => {
+const handleView = (school: SchoolInfo) => {
   if (!school.id) return
   navigateTo(`/admin/schools/${school.id}`)
 }
 
-const handleEdit = (school: School) => {
+const handleEdit = (school: SchoolInfo) => {
   selectedSchool.value = school
   populateFormFromSchool(school)
   showSchoolModal.value = true
@@ -228,7 +169,13 @@ const handleSave = async () => {
   try {
     await apiFetch(`/schools/${selectedSchool.value.id}`, {
       method: 'PUT',
-      body: form
+      body: {
+        name: form.name,
+        logo_url: form.logo_url || null,
+        theme_color: form.theme_color || null,
+        address: form.address,
+        description: form.description
+      }
     })
     success('แก้ไขข้อมูลโรงเรียนสำเร็จ')
     showSchoolModal.value = false
