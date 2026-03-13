@@ -1,0 +1,14 @@
+{
+  "name": "education-flow-web",
+  "private": true,
+  "packageManager": "yarn@4.13.0",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "dependencies": {
+    "nuxt": "^4.4.2"
+  }
+}
