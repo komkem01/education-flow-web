@@ -49,16 +49,53 @@
 
         <!-- Navigation -->
         <nav class="flex-1 overflow-y-auto px-4 py-4">
-          <NuxtLink
-            v-for="item in menuItems"
-            :key="item.path"
-            :to="item.path"
-            class="flex items-center gap-3 px-4 py-3 mb-1 rounded-lg text-secondary-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
-            active-class="bg-primary-100 text-primary-700 font-medium"
-          >
-            <Icon :name="item.icon" class="w-5 h-5" />
-            <span class="text-sm">{{ item.label }}</span>
-          </NuxtLink>
+          <template v-if="isAccordionMenu">
+            <div
+              v-for="section in menuSections"
+              :key="section.key"
+              class="mb-2 rounded-xl border border-secondary-200 bg-secondary-50/60"
+            >
+              <button
+                class="flex w-full items-center justify-between px-3 py-2.5 text-left"
+                @click="toggleSection(section.key)"
+              >
+                <span class="text-xs font-semibold uppercase tracking-wide text-secondary-700">
+                  {{ section.label }}
+                </span>
+                <Icon
+                  name="lucide:chevron-down"
+                  class="h-4 w-4 text-secondary-500 transition-transform"
+                  :class="isSectionOpen(section.key) ? 'rotate-180' : ''"
+                />
+              </button>
+
+              <div v-show="isSectionOpen(section.key)" class="px-2 pb-2">
+                <NuxtLink
+                  v-for="item in section.items"
+                  :key="item.path"
+                  :to="item.path"
+                  class="mb-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-secondary-700 transition-colors hover:bg-primary-50 hover:text-primary-700"
+                  :class="isMenuItemActive(item.path) ? 'bg-primary-100 text-primary-700 font-medium' : ''"
+                >
+                  <Icon :name="item.icon" class="h-5 w-5" />
+                  <span class="text-sm">{{ item.label }}</span>
+                </NuxtLink>
+              </div>
+            </div>
+          </template>
+
+          <template v-else>
+            <NuxtLink
+              v-for="item in menuItems"
+              :key="item.path"
+              :to="item.path"
+              class="flex items-center gap-3 px-4 py-3 mb-1 rounded-lg text-secondary-700 hover:bg-primary-50 hover:text-primary-700 transition-colors"
+              :class="isMenuItemActive(item.path) ? 'bg-primary-100 text-primary-700 font-medium' : ''"
+            >
+              <Icon :name="item.icon" class="w-5 h-5" />
+              <span class="text-sm">{{ item.label }}</span>
+            </NuxtLink>
+          </template>
         </nav>
 
       </div>
@@ -196,10 +233,12 @@ import type { UserRole } from '~/types'
 
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
+const route = useRoute()
 const showRoleSwitch = ref(false)
 const showNotifications = ref(false)
 const showProfileMenu = ref(false)
 const profileMenuRef = ref<HTMLElement | null>(null)
+const expandedSections = ref<Record<string, boolean>>({})
 
 const props = defineProps<{
   pageTitle?: string
@@ -210,6 +249,134 @@ const menuItems = computed(() => {
   const role = authStore.currentRole as keyof typeof ROLE_MENU_ITEMS
   return ROLE_MENU_ITEMS[role] || []
 })
+
+type MenuItem = {
+  label: string
+  icon: string
+  path: string
+}
+
+type MenuSection = {
+  key: string
+  label: string
+  items: readonly MenuItem[]
+}
+
+const pickItems = (items: readonly MenuItem[], paths: string[]) => {
+  return paths
+    .map((path) => items.find((item) => item.path === path))
+    .filter((item): item is MenuItem => !!item)
+}
+
+const menuSections = computed<MenuSection[]>(() => {
+  const role = authStore.currentRole
+  const items = (menuItems.value || []) as readonly MenuItem[]
+
+  if (role !== 'admin') {
+    return [{ key: 'main', label: 'เมนูหลัก', items }]
+  }
+
+  const sections: MenuSection[] = [
+    {
+      key: 'overview',
+      label: 'ภาพรวมโรงเรียน',
+      items: pickItems(items, [
+        '/admin',
+        '/admin/schools',
+        '/admin/announcements',
+        '/admin/calendar',
+        '/admin/reports'
+      ])
+    },
+    {
+      key: 'people',
+      label: 'บุคลากรและผู้เรียน',
+      items: pickItems(items, [
+        '/admin/staff',
+        '/admin/personnels',
+        '/admin/teachers',
+        '/admin/students',
+        '/admin/roles'
+      ])
+    },
+    {
+      key: 'academic',
+      label: 'วิชาการ',
+      items: pickItems(items, [
+        '/admin/classrooms',
+        '/admin/timetable',
+        '/admin/subjects',
+        '/admin/subject-groups',
+        '/admin/subject-subgroups',
+        '/admin/courses',
+        '/admin/grades',
+        '/admin/attendance',
+        '/admin/behavior'
+      ])
+    },
+    {
+      key: 'workflow',
+      label: 'งานระบบ',
+      items: pickItems(items, [
+        '/admin/approvals',
+        '/admin/settings'
+      ])
+    }
+  ]
+
+  return sections.filter((section) => section.items.length > 0)
+})
+
+const isAccordionMenu = computed(() => authStore.currentRole === 'admin' && menuSections.value.length > 1)
+
+const isMenuItemActive = (path: string) => {
+  if (path === '/admin') {
+    return route.path === '/admin'
+  }
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
+
+const sectionHasActiveItem = (section: MenuSection) => {
+  return section.items.some((item) => isMenuItemActive(item.path))
+}
+
+const isSectionOpen = (key: string) => {
+  return expandedSections.value[key] ?? false
+}
+
+const toggleSection = (key: string) => {
+  expandedSections.value[key] = !isSectionOpen(key)
+}
+
+watch(
+  [menuSections, () => route.path],
+  ([sections]) => {
+    if (!isAccordionMenu.value) {
+      expandedSections.value = {}
+      return
+    }
+
+    const nextState: Record<string, boolean> = {}
+    for (const section of sections) {
+      const alreadySet = expandedSections.value[section.key]
+      if (typeof alreadySet === 'boolean') {
+        nextState[section.key] = alreadySet
+        continue
+      }
+      nextState[section.key] = sectionHasActiveItem(section)
+    }
+
+    if (!Object.values(nextState).some(Boolean) && sections.length > 0) {
+      const firstSection = sections[0]
+      if (firstSection) {
+        nextState[firstSection.key] = true
+      }
+    }
+
+    expandedSections.value = nextState
+  },
+  { immediate: true }
+)
 
 const roleLabel = computed(() => {
   if (!authStore.currentRole) return '-'
