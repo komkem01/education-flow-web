@@ -22,7 +22,7 @@
   "devDependencies": {
     "@iconify-json/heroicons": "^1.2.1",
     "@iconify-json/lucide": "^1.2.14",
-    "@nuxt/icon": "^1.9.3",
+    "@nuxt/icon": "^2.2.1",
     "@vue/language-core": "^3.1.2",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.49",

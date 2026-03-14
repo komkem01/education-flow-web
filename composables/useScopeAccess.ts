@@ -4,13 +4,24 @@ export const useScopeAccess = () => {
   const authStore = useAuthStore()
 
   const isSuperAdmin = computed(() => authStore.currentRole === 'super_admin')
+  const currentRole = computed(() => authStore.currentRole)
   const permissions = computed(() => authStore.user?.permissions || [])
   const scopedSchoolIds = computed(() => authStore.user?.schoolScope?.schoolIds || [])
   const canManageAllSchools = computed(() => !!authStore.user?.schoolScope?.canManageAllSchools)
 
+  const roleAllowsWriteByDefault = () => {
+    if (currentRole.value === 'super_admin') return true
+    if (currentRole.value === 'staff') return true
+    if (currentRole.value === 'admin') return true
+    return false
+  }
+
   const hasPermission = (resource: string, action: string) => {
     const values = permissions.value
-    if (values.length === 0) return true
+    if (values.length === 0) {
+      if (normalizedAction === 'read') return true
+      return roleAllowsWriteByDefault()
+    }
 
     const normalizedAction = action === 'approve' ? 'write' : action
 
@@ -58,6 +69,10 @@ export const useScopeAccess = () => {
     return hasPermission(resource, 'write') && canAccessSchool(schoolId)
   }
 
+  const canMutateByRole = (resource: string, schoolId?: string) => {
+    return canWrite(resource, schoolId)
+  }
+
   const canSeeAction = (resource: string, action: 'read' | 'write' | 'approve', schoolId?: string) => {
     return action === 'read' ? canRead(resource, schoolId) : canWrite(resource, schoolId)
   }
@@ -89,6 +104,7 @@ export const useScopeAccess = () => {
     canAccessSchool,
     canRead,
     canWrite,
+    canMutateByRole,
     canSeeAction,
     actionDisabledReason,
     defaultProfilePathByRole

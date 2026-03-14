@@ -138,12 +138,11 @@ export const ROLE_MENU_ITEMS = {
     { label: 'บันทึกผลการเรียน', icon: 'lucide:book-marked', path: ROUTE_PATHS.ADMIN_GRADES },
     { label: 'จัดการห้องเรียน', icon: 'lucide:door-open', path: ROUTE_PATHS.ADMIN_CLASSROOMS },
     { label: 'ตารางสอน', icon: 'lucide:table-properties', path: ROUTE_PATHS.ADMIN_TIMETABLE },
-    { label: 'แผนก', icon: 'lucide:building', path: ROUTE_PATHS.ADMIN_DEPARTMENTS },
+    { label: 'ฝ่ายงาน', icon: 'lucide:building', path: ROUTE_PATHS.ADMIN_DEPARTMENTS },
     { label: 'จัดการรายวิชา', icon: 'lucide:book-open', path: ROUTE_PATHS.ADMIN_SUBJECTS },
     { label: 'กลุ่มวิชา', icon: 'lucide:layers', path: ROUTE_PATHS.ADMIN_SUBJECT_GROUPS },
     { label: 'กลุ่มย่อยวิชา', icon: 'lucide:layers-2', path: ROUTE_PATHS.ADMIN_SUBJECT_SUBGROUPS },
     { label: 'หลักสูตร', icon: 'lucide:scroll-text', path: ROUTE_PATHS.ADMIN_COURSES },
-    { label: 'บทบาทผู้ใช้งาน', icon: 'lucide:key-round', path: ROUTE_PATHS.ADMIN_ROLES },
     { label: 'คำขออนุมัติ', icon: 'lucide:file-check', path: ROUTE_PATHS.ADMIN_APPROVALS },
     { label: 'รายงาน', icon: 'lucide:bar-chart-3', path: ROUTE_PATHS.ADMIN_REPORTS },
     { label: 'ตั้งค่า', icon: 'lucide:settings', path: ROUTE_PATHS.ADMIN_SETTINGS }

@@ -1,98 +1,98 @@
 <template>
-  <NuxtLayout name="admin" page-title="จัดการห้องเรียน" page-description="จัดการข้อมูลห้องเรียนในโรงเรียน">
-    <div class="mb-6 flex justify-between items-center">
-      <div class="flex gap-3">
-        <UIInput
-          v-model="searchQuery"
-          placeholder="ค้นหาห้องเรียน..."
-          @input="handleSearch"
-        />
-        <UISelect
-          v-model="filterGrade"
-          :options="gradeOptions"
-          placeholder="ระดับชั้น"
-          @update:model-value="handleFilterChange"
-        />
+  <NuxtLayout name="admin" page-title="ห้องเรียน" page-description="จัดการข้อมูลห้องเรียนทั้งหมดในโรงเรียน">
+    <div class="mb-6 flex items-center justify-between gap-3">
+      <div class="flex-1 text-sm text-secondary-600">ทั้งหมด {{ pagination.total }} รายการ</div>
+      <div class="flex items-center gap-2">
+        <UIButton variant="secondary" icon="lucide:refresh-cw" @click="fetchAll">รีเฟรช</UIButton>
+        <UIButton variant="primary" icon="lucide:plus" @click="openCreateModal">เพิ่มห้องเรียน</UIButton>
       </div>
-      <UIButton variant="primary" icon="lucide:plus" @click="openCreateModal">
-        เพิ่มห้องเรียน
-      </UIButton>
     </div>
+
+    <UICard v-if="errorMessage" class="mb-4">
+      <p class="text-sm text-danger-600">{{ errorMessage }}</p>
+    </UICard>
+
+    <UICard class="mb-4">
+      <div class="flex flex-nowrap items-center gap-2 overflow-x-auto">
+        <select v-model="filterClassroomId" class="input min-w-[220px]" @change="onFilterChange">
+          <option value="">ทุกห้องเรียน</option>
+          <option v-for="item in rows" :key="item.id" :value="item.id">{{ item.name }}</option>
+        </select>
+        <select v-model="filterGrade" class="input min-w-[220px]" @change="onFilterChange">
+          <option value="">ทุกระดับชั้น</option>
+          <option v-for="grade in gradeOptions" :key="grade" :value="grade">{{ grade }}</option>
+        </select>
+        <UIButton
+          v-if="filterClassroomId || filterGrade"
+          variant="detail"
+          class="shrink-0 whitespace-nowrap"
+          @click="clearFilters"
+        >
+          ล้างตัวกรอง
+        </UIButton>
+      </div>
+    </UICard>
 
     <UICard>
       <UITable
         :columns="columns"
-        :data="classrooms"
+        :data="pagedRows"
         :loading="loading"
-        :actions="{ view: true, edit: true, delete: false }"
+        :actions="{ view: true, edit: true, delete: true }"
         :pagination="pagination"
         @view="handleView"
         @edit="handleEdit"
+        @delete="openDeleteModal"
         @page-change="handlePageChange"
-      >
-        <template #cell-gradeLevel="{ value }">
-          <UIBadge variant="primary">ม.{{ value }}</UIBadge>
-        </template>
-
-        <template #cell-isActive="{ value }">
-          <UIBadge :variant="value ? 'success' : 'secondary'">
-            {{ value ? 'ใช้งาน' : 'ไม่ใช้งาน' }}
-          </UIBadge>
-        </template>
-      </UITable>
+      />
     </UICard>
 
     <UIModal
-      v-model="showClassroomModal"
-      :title="editMode ? 'แก้ไขข้อมูลห้องเรียน' : 'เพิ่มห้องเรียน'"
+      v-model="showModal"
+      :title="editTarget ? 'แก้ไขห้องเรียน' : 'เพิ่มห้องเรียน'"
       size="lg"
       :show-default-footer="true"
       :loading="saving"
       @confirm="handleSave"
     >
-      <div class="grid grid-cols-2 gap-4">
-        <UIInput
-          v-model="form.name"
-          label="ชื่อห้องเรียน"
-          placeholder="เช่น ห้อง 1"
-          required
-        />
+      <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <UIInput v-model="form.name" label="ชื่อห้องเรียน" placeholder="เช่น ม.1/1" required />
         <UISelect
           v-model="form.gradeLevel"
           label="ระดับชั้น"
-          :options="gradeOptions"
-          required
+          :options="gradeSelectOptions"
+          placeholder="เลือกระดับชั้น"
+        />
+        <UIInput v-model="form.roomNo" class="md:col-span-2" label="ห้องที่ใช้เรียน" placeholder="เช่น อาคาร 1 ห้อง 101" />
+        <UISelect
+          v-model="form.advisorTeacherId"
+          class="md:col-span-2"
+          label="ครูประจำชั้น"
+          :options="teacherOptions"
+          placeholder="เลือกครูประจำชั้น"
         />
       </div>
+    </UIModal>
 
-      <div class="grid grid-cols-2 gap-4 mt-4">
-        <UIInput
-          v-model="form.section"
-          label="กลุ่ม/แผน"
-          placeholder="เช่น วิทย์-คณิต"
-        />
-        <UIInput
-          v-model="form.capacity"
-          label="ความจุ"
-          type="number"
-          placeholder="40"
-          required
-        />
-      </div>
-
-      <div class="mt-4">
-        <UIInput
-          v-model="form.homeRoomTeacherId"
-          label="รหัสครูที่ปรึกษา"
-          placeholder="กรอกรหัสครู (ถ้ามี)"
-        />
-      </div>
+    <UIModal
+      v-model="showDeleteModal"
+      title="ยืนยันการลบ"
+      size="md"
+      :show-default-footer="true"
+      :loading="deleting"
+      @confirm="confirmDelete"
+    >
+      <p class="text-sm text-secondary-700">
+        ต้องการลบห้องเรียน
+        <span class="font-semibold text-secondary-900">{{ deleteTarget?.name }}</span>
+        ใช่หรือไม่?
+      </p>
     </UIModal>
   </NuxtLayout>
 </template>
 
 <script setup lang="ts">
-import type { Classroom } from '~/types'
+import { computed, reactive, ref, watch } from 'vue'
 
 definePageMeta({
   layout: false,
@@ -101,140 +101,227 @@ definePageMeta({
 
 const { apiFetch } = useApi()
 const { success, error } = useToast()
-const route = useRoute()
-const router = useRouter()
+const authStore = useAuthStore()
 
-const classrooms = ref<Classroom[]>([])
+type BaseResponse<T> = { data: T }
+
+type ClassroomApiItem = {
+  id: string
+  school_id: string
+  name: string
+  grade_level: string | null
+  room_no: string | null
+  advisor_teacher_id: string | null
+}
+
+type TeacherApiItem = {
+  id: string
+  teacher_code: string | null
+  first_name: string | null
+  last_name: string | null
+}
+
+type ClassroomRow = {
+  id: string
+  schoolId: string
+  name: string
+  gradeLevel: string
+  roomNo: string
+  advisorTeacherId: string
+  advisorTeacherName: string
+}
+
+type Option = {
+  value: string
+  label: string
+}
+
 const loading = ref(false)
 const saving = ref(false)
-const showClassroomModal = ref(false)
-const editMode = ref(false)
-const selectedClassroom = ref<Classroom | null>(null)
-const searchQuery = ref('')
-const filterGrade = ref('')
+const deleting = ref(false)
+const errorMessage = ref('')
+
+const rows = ref<ClassroomRow[]>([])
+const teacherRows = ref<TeacherApiItem[]>([])
+
+const pagination = ref({ page: 1, limit: 10, total: 0, totalPages: 1 })
 
 const columns = [
-  { key: 'name', label: 'ห้องเรียน' },
+  { key: 'name', label: 'ชื่อห้องเรียน' },
   { key: 'gradeLevel', label: 'ระดับชั้น' },
-  { key: 'section', label: 'กลุ่ม/แผน' },
-  { key: 'currentStudents', label: 'จำนวนนักเรียน' },
-  { key: 'capacity', label: 'ความจุ' },
-  { key: 'isActive', label: 'สถานะ' }
+  { key: 'roomNo', label: 'ห้องที่ใช้เรียน' },
+  { key: 'advisorTeacherName', label: 'ครูประจำชั้น' }
 ]
 
-const gradeOptions = [
-  { label: 'ทั้งหมด', value: '' },
-  { label: 'ม.1', value: '1' },
-  { label: 'ม.2', value: '2' },
-  { label: 'ม.3', value: '3' },
-  { label: 'ม.4', value: '4' },
-  { label: 'ม.5', value: '5' },
-  { label: 'ม.6', value: '6' }
-]
+const gradeOptions = ['ม.1', 'ม.2', 'ม.3', 'ม.4', 'ม.5', 'ม.6']
 
-const pagination = ref({
-  page: 1,
-  limit: 10,
-  total: 0,
-  totalPages: 0
-})
+const gradeSelectOptions = computed<Option[]>(() =>
+  gradeOptions.map((item) => ({ value: item, label: item }))
+)
+
+const teacherOptions = computed<Option[]>(() =>
+  teacherRows.value
+    .map((item) => {
+      const first = (item.first_name || '').trim()
+      const last = (item.last_name || '').trim()
+      const fullName = `${first} ${last}`.trim()
+      return {
+        value: item.id,
+        label: fullName || item.teacher_code || 'ไม่ระบุชื่อครู'
+      }
+    })
+    .sort((a, b) => a.label.localeCompare(b.label, 'th'))
+)
+
+const filterClassroomId = ref('')
+const filterGrade = ref('')
+
+const showModal = ref(false)
+const editTarget = ref<ClassroomRow | null>(null)
+
+const showDeleteModal = ref(false)
+const deleteTarget = ref<ClassroomRow | null>(null)
 
 const form = reactive({
   name: '',
   gradeLevel: '',
-  section: '',
-  capacity: '',
-  homeRoomTeacherId: ''
+  roomNo: '',
+  advisorTeacherId: ''
 })
 
-const clearEditQuery = async () => {
-  if (!('edit' in route.query)) return
-  const query = { ...route.query }
-  delete query.edit
-  await router.replace({ path: route.path, query })
+const filteredRows = computed(() => {
+  return rows.value.filter((row) => {
+    if (filterClassroomId.value && row.id !== filterClassroomId.value) return false
+    if (filterGrade.value && row.gradeLevel !== filterGrade.value) return false
+    return true
+  })
+})
+
+const pagedRows = computed(() => {
+  const start = (pagination.value.page - 1) * pagination.value.limit
+  const end = start + pagination.value.limit
+  return filteredRows.value.slice(start, end)
+})
+
+const updatePagination = () => {
+  pagination.value.total = filteredRows.value.length
+  pagination.value.totalPages = Math.max(1, Math.ceil(filteredRows.value.length / pagination.value.limit))
+  if (pagination.value.page > pagination.value.totalPages) {
+    pagination.value.page = pagination.value.totalPages
+  }
+}
+
+const onFilterChange = () => {
+  pagination.value.page = 1
+}
+
+const clearFilters = () => {
+  filterClassroomId.value = ''
+  filterGrade.value = ''
 }
 
 const resetForm = () => {
-  editMode.value = false
-  selectedClassroom.value = null
   form.name = ''
   form.gradeLevel = ''
-  form.section = ''
-  form.capacity = ''
-  form.homeRoomTeacherId = ''
-}
-
-const populateFormFromClassroom = (classroom: Partial<Classroom>) => {
-  form.name = classroom.name || ''
-  form.gradeLevel = classroom.gradeLevel ? String(classroom.gradeLevel) : ''
-  form.section = classroom.section || ''
-  form.capacity = classroom.capacity ? String(classroom.capacity) : ''
-  form.homeRoomTeacherId = classroom.homeRoomTeacherId || ''
+  form.roomNo = ''
+  form.advisorTeacherId = ''
 }
 
 const openCreateModal = () => {
+  editTarget.value = null
   resetForm()
-  showClassroomModal.value = true
+  showModal.value = true
 }
 
-const fetchClassrooms = async () => {
+const handleEdit = (row: ClassroomRow) => {
+  editTarget.value = row
+  form.name = row.name
+  form.gradeLevel = row.gradeLevel
+  form.roomNo = row.roomNo === '-' ? '' : row.roomNo
+  form.advisorTeacherId = row.advisorTeacherId
+  showModal.value = true
+}
+
+const openDeleteModal = (row: ClassroomRow) => {
+  deleteTarget.value = row
+  showDeleteModal.value = true
+}
+
+const handleView = (row: ClassroomRow) => {
+  navigateTo(`/admin/classrooms/${row.id}`)
+}
+
+const handlePageChange = (page: number) => {
+  pagination.value.page = page
+}
+
+const fetchAll = async () => {
   loading.value = true
+  errorMessage.value = ''
   try {
-    const response = await apiFetch<any>('/classrooms', {
-      params: {
-        page: pagination.value.page,
-        limit: pagination.value.limit,
-        search: searchQuery.value,
-        gradeLevel: filterGrade.value
-      }
-    })
-    classrooms.value = response.data || []
-    pagination.value.total = response.total || 0
-    pagination.value.totalPages = response.totalPages || 0
+    const [classroomsRes, teachersRes] = await Promise.all([
+      apiFetch<BaseResponse<ClassroomApiItem[]>>('/classrooms'),
+      apiFetch<BaseResponse<TeacherApiItem[]>>('/teachers', { params: { only_active: false } })
+    ])
+
+    const classroomList = Array.isArray(classroomsRes?.data) ? classroomsRes.data : []
+    teacherRows.value = Array.isArray(teachersRes?.data) ? teachersRes.data : []
+
+    const teacherById = new Map(teacherOptions.value.map((item) => [item.value, item.label] as const))
+
+    rows.value = classroomList
+      .map((item) => ({
+        id: item.id,
+        schoolId: item.school_id,
+        name: (item.name || '').trim(),
+        gradeLevel: (item.grade_level || '').trim() || '-',
+        roomNo: (item.room_no || '').trim() || '-',
+        advisorTeacherId: (item.advisor_teacher_id || '').trim(),
+        advisorTeacherName: teacherById.get((item.advisor_teacher_id || '').trim()) || '-'
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'th'))
+
+    updatePagination()
   } catch {
-    error('เกิดข้อผิดพลาดในการโหลดข้อมูล')
+    rows.value = []
+    updatePagination()
+    errorMessage.value = 'ไม่สามารถโหลดข้อมูลห้องเรียนได้'
+    error('ไม่สามารถโหลดข้อมูลห้องเรียนได้')
   } finally {
     loading.value = false
   }
 }
 
-const handleSearch = () => {
-  pagination.value.page = 1
-  fetchClassrooms()
-}
-
-const handleFilterChange = () => {
-  pagination.value.page = 1
-  fetchClassrooms()
-}
-
-const handleView = (classroom: Classroom) => {
-  if (!classroom.id) return
-  navigateTo(`/admin/classrooms/${classroom.id}`)
-}
-
-const handleEdit = (classroom: Classroom) => {
-  editMode.value = true
-  selectedClassroom.value = classroom
-  populateFormFromClassroom(classroom)
-  showClassroomModal.value = true
-}
-
 const handleSave = async () => {
+  const name = form.name.trim()
+  const schoolId = String(authStore.user?.schoolId || '').trim()
+
+  if (!name) {
+    error('กรุณากรอกชื่อห้องเรียน')
+    return
+  }
+
+  if (!schoolId) {
+    error('ไม่พบ school id ของผู้ใช้งาน')
+    return
+  }
+
   saving.value = true
   try {
     const payload = {
-      ...form,
-      capacity: Number(form.capacity || 0),
-      gradeLevel: Number(form.gradeLevel || 0)
+      school_id: schoolId,
+      name,
+      grade_level: form.gradeLevel || null,
+      room_no: form.roomNo.trim() || null,
+      advisor_teacher_id: form.advisorTeacherId || null
     }
 
-    if (editMode.value && selectedClassroom.value?.id) {
-      await apiFetch(`/classrooms/${selectedClassroom.value.id}`, {
-        method: 'PUT',
+    if (editTarget.value?.id) {
+      await apiFetch(`/classrooms/${editTarget.value.id}`, {
+        method: 'PATCH',
         body: payload
       })
-      success('แก้ไขข้อมูลสำเร็จ')
+      success('แก้ไขห้องเรียนสำเร็จ')
     } else {
       await apiFetch('/classrooms', {
         method: 'POST',
@@ -243,39 +330,53 @@ const handleSave = async () => {
       success('เพิ่มห้องเรียนสำเร็จ')
     }
 
-    showClassroomModal.value = false
-    resetForm()
-    await fetchClassrooms()
+    showModal.value = false
+    await fetchAll()
   } catch {
-    error('เกิดข้อผิดพลาดในการบันทึกข้อมูล')
+    errorMessage.value = 'บันทึกข้อมูลห้องเรียนไม่สำเร็จ'
+    error('บันทึกข้อมูลห้องเรียนไม่สำเร็จ')
   } finally {
     saving.value = false
   }
 }
 
-const handlePageChange = (page: number) => {
-  pagination.value.page = page
-  fetchClassrooms()
-}
+const confirmDelete = async () => {
+  if (!deleteTarget.value?.id) {
+    showDeleteModal.value = false
+    return
+  }
 
-const openEditFromQuery = async () => {
-  const queryValue = route.query.edit
-  const editId = Array.isArray(queryValue) ? queryValue[0] : queryValue
-  if (!editId) return
-
+  deleting.value = true
   try {
-    const response = await apiFetch<any>(`/classrooms/${editId}`)
-    const classroom = response.data ?? response
-    handleEdit(classroom)
+    await apiFetch(`/classrooms/${deleteTarget.value.id}`, {
+      method: 'DELETE'
+    })
+    success('ลบห้องเรียนสำเร็จ')
+    showDeleteModal.value = false
+    deleteTarget.value = null
+    await fetchAll()
   } catch {
-    error('ไม่สามารถเปิดหน้าแก้ไขจากลิงก์นี้ได้')
+    errorMessage.value = 'ลบข้อมูลห้องเรียนไม่สำเร็จ'
+    error('ลบข้อมูลห้องเรียนไม่สำเร็จ')
   } finally {
-    await clearEditQuery()
+    deleting.value = false
   }
 }
 
-onMounted(async () => {
-  await fetchClassrooms()
-  await openEditFromQuery()
+watch([filterClassroomId, filterGrade], () => {
+  onFilterChange()
+  updatePagination()
+})
+
+watch(
+  () => pagination.value.limit,
+  () => {
+    pagination.value.page = 1
+    updatePagination()
+  }
+)
+
+onMounted(() => {
+  fetchAll()
 })
 </script>

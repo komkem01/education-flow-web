@@ -29,8 +29,15 @@ const fetchItem = async () => {
   loading.value = true
   try {
     const id = String(route.params.id)
-    const response = await apiFetch<any>(`/student-attendance-logs/${id}`)
-    item.value = response.data ?? response
+    const studentId = String(route.query.student_id || '')
+    if (!studentId) {
+      item.value = null
+      return
+    }
+
+    const response = await apiFetch<any>(`/back-office/students/${encodeURIComponent(studentId)}/attendance-logs`)
+    const list = Array.isArray(response?.data) ? response.data : Array.isArray(response) ? response : []
+    item.value = list.find((entry: any) => String(entry?.id) === id) || null
   } catch {
     error('ไม่สามารถโหลดรายละเอียดการเข้าเรียนได้')
     item.value = null

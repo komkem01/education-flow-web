@@ -35,34 +35,40 @@
               <slot name="actions" :row="row">
                 <UIButton
                   v-if="actions?.view"
-                  variant="neutral"
+                  variant="detail"
                   size="sm"
-                  class="btn-outline !px-2.5 !py-2 border-secondary-300 hover:border-secondary-500 hover:shadow-sm hover:scale-105 active:scale-95"
+                  class="btn-outline !px-3 !py-2 border-secondary-300 font-semibold hover:border-secondary-500 hover:shadow-sm hover:scale-105 active:scale-95"
                   icon="lucide:eye"
                   title="ดูรายละเอียด"
                   aria-label="ดูรายละเอียด"
                   @click="emit('view', row)"
-                />
+                >
+                  รายละเอียด
+                </UIButton>
                 <UIButton
                   v-if="actions?.edit"
-                  variant="neutral"
+                  variant="edit"
                   size="sm"
-                  class="btn-outline !px-2.5 !py-2 border-secondary-300 hover:border-primary-400 hover:shadow-sm hover:scale-105 active:scale-95"
+                  class="btn-outline !px-3 !py-2 border-secondary-300 font-semibold hover:border-primary-400 hover:shadow-sm hover:scale-105 active:scale-95"
                   icon="lucide:pencil"
                   title="แก้ไข"
                   aria-label="แก้ไข"
                   @click="emit('edit', row)"
-                />
+                >
+                  แก้ไข
+                </UIButton>
                 <UIButton
                   v-if="actions?.delete"
-                  variant="neutral"
+                  variant="delete"
                   size="sm"
-                  class="btn-outline !px-2.5 !py-2 border-secondary-300 text-danger-700 hover:border-danger-400 hover:bg-danger-50 hover:shadow-sm hover:scale-105 active:scale-95"
+                  class="btn-outline !px-3 !py-2 border-secondary-300 font-semibold hover:border-danger-400 hover:bg-danger-50 hover:shadow-sm hover:scale-105 active:scale-95"
                   icon="lucide:trash-2"
                   title="ลบ"
                   aria-label="ลบ"
                   @click="emit('delete', row)"
-                />
+                >
+                  ลบ
+                </UIButton>
               </slot>
             </div>
           </td>

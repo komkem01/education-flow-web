@@ -295,8 +295,7 @@ const menuSections = computed<MenuSection[]>(() => {
         '/admin/staff',
         '/admin/personnels',
         '/admin/teachers',
-        '/admin/students',
-        '/admin/roles'
+        '/admin/students'
       ])
     },
     {
@@ -304,6 +303,7 @@ const menuSections = computed<MenuSection[]>(() => {
       label: 'วิชาการ',
       items: pickItems(items, [
         '/admin/classrooms',
+        '/admin/departments',
         '/admin/timetable',
         '/admin/subjects',
         '/admin/subject-groups',
